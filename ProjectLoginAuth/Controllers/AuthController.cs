@@ -28,10 +28,6 @@ namespace ProjectLoginAuth.Controllers
         {
             var userName = _userService.GetMyName();
             return Ok(userName);
-            //string userName = User.Identities.First().Name;
-            //string userName2 = User.FindFirstValue(ClaimTypes.Name);
-            //string role = User.FindFirstValue(ClaimTypes.Role);
-            //return Ok(new { userName, userName2, role });
         }
 
 
@@ -56,8 +52,56 @@ namespace ProjectLoginAuth.Controllers
                 return BadRequest("Wrong password");
             }
             string token = CreateToken(user);
+
+            var refreshToken = GenerateRefeshToken();
+            SetRefreshToken(refreshToken);
+
             return Ok(token);
         }
+        [HttpPost("refresh-token")]
+        public async Task<ActionResult<string>> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            if(!user.RefreshToken.Equals(refreshToken))
+            {
+                return Unauthorized("Invalid refresh token;");
+            }else if(user.TokenExpires < DateTime.Now)
+            {
+                return Unauthorized("token expired.");
+            }
+            string token = CreateToken(user);
+            var newRefreshToken = GenerateRefeshToken();
+            SetRefreshToken(newRefreshToken);
+            return Ok(token);
+        }
+
+
+        private RefreshToken GenerateRefeshToken()
+        {
+            var refreshToken = new RefreshToken()
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                Exprires = DateTime.Now.AddSeconds(15),
+                Created = DateTime.Now
+           
+            };
+            return refreshToken;
+        }
+
+        private void SetRefreshToken(RefreshToken newRefreshToken)
+        {
+            var cookieOptions = new CookieOptions()
+            {
+                HttpOnly = true,
+                Expires = newRefreshToken.Exprires,
+            };
+            Response.Cookies.Append("refreshToken", newRefreshToken.Token, cookieOptions);
+
+            user.RefreshToken = newRefreshToken.Token;
+            user.TokenExpires = newRefreshToken.Exprires;
+            user.TokenCreated = newRefreshToken.Created;
+        }
+
         private string CreateToken(User user)
         {
             List<Claim> claims = new List<Claim>()
