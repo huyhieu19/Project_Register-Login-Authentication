@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using ProjectLoginAuth.Services.UserService;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -14,12 +16,23 @@ namespace ProjectLoginAuth.Controllers
         public static User user = new User();
 
         private readonly IConfiguration _configuration;
+        private readonly IUserService _userService;
 
-        public AuthController(IConfiguration configuration)
+        public AuthController(IConfiguration configuration, IUserService userService)
         {
             _configuration = configuration;
+            _userService = userService;
         }
-
+        [HttpGet, Authorize]
+        public ActionResult<object> GetMe()
+        {
+            var userName = _userService.GetMyName();
+            return Ok(userName);
+            //string userName = User.Identities.First().Name;
+            //string userName2 = User.FindFirstValue(ClaimTypes.Name);
+            //string role = User.FindFirstValue(ClaimTypes.Role);
+            //return Ok(new { userName, userName2, role });
+        }
 
 
         [HttpPost("register")]
